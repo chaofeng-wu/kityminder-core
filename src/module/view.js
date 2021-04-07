@@ -75,7 +75,7 @@ define(function(require, exports, module) {
 
         getView: function() {
             var minder = this._minder;
-            var c = minder._lastClientSize || {
+            var c = {
                 width: minder.getRenderTarget().clientWidth,
                 height: minder.getRenderTarget().clientHeight
             };
