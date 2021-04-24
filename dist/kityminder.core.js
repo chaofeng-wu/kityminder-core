@@ -1,6 +1,6 @@
 /*!
  * ====================================================
- * Kity Minder Core - v1.4.50 - 2021-04-09
+ * Kity Minder Core - v1.4.50 - 2021-04-17
  * https://github.com/fex-team/kityminder-core
  * GitHub: https://github.com/fex-team/kityminder-core.git 
  * Copyright (c) 2021 Baidu FEX; Licensed BSD-3-Clause
@@ -8007,27 +8007,13 @@ _p[65] = {
         var IMAGE_MARK_CLOSE = "\x3c!--/Image--\x3e";
         var lastPrefix = "";
         function encode(json) {
-            return _build(json, 1).join("\n");
+            lastPrefix = "";
+            return _build(json).join("\n");
         }
-        function _getPrefix(curPrefix, lastPrefix){
-            if(curPrefix) return curPrefix;
-            if(!lastPrefix) return "#";
-            if(/\*/.test(lastPrefix)){
-                return "\t" + lastPrefix;
-            }
-            
-            if(/#/.test(lastPrefix)){
-                if(lastPrefix.length > 5){
-                    return "*";
-                }else{
-                    return lastPrefix + "#";
-                }
-            }
-        }
-        function _build(node) {
+        function _build(node, level) {
             var lines = [];
-            var prefix = _getPrefix(node.data.prefix, lastPrefix)
-            lines.push(prefix + " " + node.data.text);
+            var prefix = _getPrefix(node.data.prefix, lastPrefix);
+            lines.push(prefix + " " + node.data.text + "\n");
             var note = node.data.note;
             if (note) {
                 lines.push(EMPTY_LINE);
@@ -8054,36 +8040,40 @@ _p[65] = {
             });
             return lines;
         }
+        function _generateHeaderSharp(level) {
+            var sharps = "";
+            while (level--) sharps += "#";
+            return sharps;
+        }
         function decode(markdown) {
             var json, parentMap = {}, lines, line, lineInfo, level, node, parent, noteProgress, imageProgress, codeBlock;
-
             var imageUrl = "";
             // 一级标题转换 `{title}\n===` => `# {title}`
             markdown = markdown.replace(/^(.+)\n={3,}/, function($0, $1) {
                 return "# " + $1;
             });
             lines = markdown.split(LINE_ENDING_SPLITER);
+            if(lines.length === 1 && lines[0].length < 1) return;
             // 按行分析
             for (var i = 0; i < lines.length; i++) {
                 line = lines[i];
                 lineInfo = _resolveLine(line);
-
                 if ("*" === lineInfo.prefix || "-" === lineInfo.prefix) {
-                    if (0 === i){
+                    if (0 === i) {
                         lineInfo.level = 1;
                     } else {
                         var previousLineMatch = /^([\t ]*)(\*|\-)\s+(.*)$/.exec(previousNodeLine);
                         if (!previousLineMatch) {
                             lineInfo.level = level + 1;
-                        }else{
+                        } else {
                             var currentLineMatch = /^([\t ]*)(\*|\-)\s+(.*)$/.exec(line);
                             var previousPrefixLength = previousLineMatch[1].length;
                             var currentPrefixLength = currentLineMatch[1].length;
                             if (previousPrefixLength === currentPrefixLength) {
                                 lineInfo.level = level;
-                            } else if(previousPrefixLength > currentPrefixLength){
+                            } else if (previousPrefixLength > currentPrefixLength) {
                                 lineInfo.level = level - 1;
-                            }else{
+                            } else {
                                 lineInfo.level = level + 1;
                             }
                         }
@@ -8110,16 +8100,16 @@ _p[65] = {
                             imageUrl = "";
                         }
                         var match = /\<!--(.+\}$)-->/.exec(imageUrl);
-                        if(match){
+                        if (match) {
                             node.data.imageSize = JSON.parse(match[1]);
-                        }else{
+                        } else {
                             node.data.imageSize = {
                                 width: 200,
                                 height: 200
                             };
                         }
                         imageProgress = false;
-                    }else{
+                    } else {
                         imageUrl += line;
                     }
                     continue;
@@ -8127,7 +8117,6 @@ _p[65] = {
                     imageProgress = true;
                     continue;
                 }
-
                 // 代码块处理
                 codeBlock = lineInfo.codeBlock ? !codeBlock : codeBlock;
                 // 备注条件：备注标签中，非标题定义，或标题越位
@@ -8160,6 +8149,20 @@ _p[65] = {
             }
             return node;
         }
+        function _getPrefix(curPrefix, lastPrefix) {
+            if (curPrefix) return curPrefix;
+            if (!lastPrefix) return "#";
+            if (/\*/.test(lastPrefix)) {
+                return "\t" + lastPrefix;
+            }
+            if (/#/.test(lastPrefix)) {
+                if (lastPrefix.length > 5) {
+                    return "*";
+                } else {
+                    return lastPrefix + "#";
+                }
+            }
+        }
         function _pushNote(node, line) {
             node.data.note += line + "\n";
         }
@@ -8173,18 +8176,18 @@ _p[65] = {
                     level: match[1] && match[1].length || null,
                     prefix: match[1],
                     fullPrefix: match[1],
-                    content: match[2],
+                    content: match[2]
                 };
             } else {
                 var match = /^([\t ]*(\*|\-))\s+(.*)$/.exec(line);
-                if (match){
+                if (match) {
                     return {
                         level: 0,
                         prefix: match[2],
                         fullPrefix: match[1],
-                        content: match[3],
+                        content: match[3]
                     };
-                }else{
+                } else {
                     return {
                         level: null,
                         prefix: null,

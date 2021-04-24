@@ -9,7 +9,7 @@ define(function(require, exports, module) {
     var lastPrefix = "";
 
     function encode(json) {
-
+        lastPrefix = "";
         return _build(json).join('\n');
     }
 
@@ -17,7 +17,7 @@ define(function(require, exports, module) {
         var lines = [];
 
         var prefix = _getPrefix(node.data.prefix, lastPrefix)
-        lines.push(prefix + " " + node.data.text);
+        lines.push(prefix + " " + node.data.text + "\n");
 
         var note = node.data.note;
         if (note) {
@@ -94,15 +94,6 @@ define(function(require, exports, module) {
                 }
             }
 
-            // 备注标记处理
-            if (lineInfo.noteClose) {
-                noteProgress = false;
-                continue;
-            } else if (lineInfo.noteStart) {
-                noteProgress = true;
-                continue;
-            }
-
             var image = "";
             var imageTitle = "";
             if (imageProgress) {
@@ -131,6 +122,15 @@ define(function(require, exports, module) {
                 continue;
             } else if (lineInfo.imageStart) {
                 imageProgress = true;
+                continue;
+            }
+
+            // 备注标记处理
+            if (lineInfo.noteClose) {
+                noteProgress = false;
+                continue;
+            } else if (lineInfo.noteStart) {
+                noteProgress = true;
                 continue;
             }
 
@@ -171,6 +171,22 @@ define(function(require, exports, module) {
             else parent.children = [node];
         }
         return node;
+    }
+
+    function _getPrefix(curPrefix, lastPrefix){
+        if(curPrefix) return curPrefix;
+        if(!lastPrefix) return "#";
+        if(/\*/.test(lastPrefix)){
+            return "\t" + lastPrefix;
+        }
+        
+        if(/#/.test(lastPrefix)){
+            if(lastPrefix.length > 5){
+                return "*";
+            }else{
+                return lastPrefix + "#";
+            }
+        }
     }
 
     function _pushNote(node, line) {
